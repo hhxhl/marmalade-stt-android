@@ -162,7 +162,8 @@ class SpeedBudgetTest {
 
     @Test
     fun `every catalog engine has a reference cost and Parakeet Ultra is the unit`() {
-        assertEquals(SttEngineCatalog.engines.map { it.id }.toSet(), SpeedBudget.REFERENCE.keys)
+        // SenseVoice is experimental: no Pixel 8a speed/memory run yet.
+        assertEquals(SttEngineCatalog.engines.map { it.id }.toSet() - SttEngineCatalog.SENSEVOICE, SpeedBudget.REFERENCE.keys)
         assertEquals(1.0, SpeedBudget.REFERENCE.getValue(SttEngineCatalog.PARAKEET_ULTRA).relativeCost, 0.0)
     }
 

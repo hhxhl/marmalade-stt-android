@@ -30,6 +30,9 @@ enum class EngineFamily {
     /** Offline Qwen3-ASR (conv frontend + encoder + LLM decoder + BPE tokenizer), same session as Whisper. */
     QWEN3_ASR,
 
+    /** Offline SenseVoice-Small int8 ONNX, simulated streaming over the bundled VAD. */
+    SENSEVOICE,
+
     /**
      * True streaming NeMo transducer (Nemotron 3.5, cache-aware):
      * sherpa-onnx's OnlineRecognizer emits partials as audio arrives. Silero
@@ -55,7 +58,7 @@ enum class EngineFamily {
             WHISPER -> Recognizer.WHISPER
             QWEN3_ASR -> Recognizer.QWEN3
             CANARY -> Recognizer.CANARY
-            NEMO_TRANSDUCER, NEMO_CTC, STREAMING_TRANSDUCER, GRANITE_CTC -> Recognizer.OTHER
+            SENSEVOICE, NEMO_TRANSDUCER, NEMO_CTC, STREAMING_TRANSDUCER, GRANITE_CTC -> Recognizer.OTHER
         }
 }
 
@@ -229,6 +232,14 @@ object SttEngineCatalog {
     /** Qwen3-ASR takes a hint for each of its 30 languages (#88; `QWEN3_LANGUAGE_NAMES` in SherpaBackends names each). */
     private val QWEN3_HINTS = listOf(LanguageOptions.AUTO) + EngineLanguages.QWEN3.sorted()
 
+    /** The five SenseVoice languages, including explicit language override. */
+    private val SENSEVOICE_HINTS = listOf(LanguageOptions.AUTO, "zh", "yue", "en", "ja", "ko")
+
+    /** This experimental model is pinned to a specific Hugging Face commit, not the mutable main branch. */
+    private const val SENSEVOICE_MODEL_URL =
+        "https://huggingface.co/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/" +
+            "resolve/2365baeacb507f821a0c8120fcee3d484dba7a07"
+
     /** Our engines repo (D5): every engine's files are release assets there, ours (#39) and re-hosted ones (#75). */
     private const val ENGINES_REPO = "maxwhipw/marmalade-stt-engines"
 
@@ -237,6 +248,8 @@ object SttEngineCatalog {
     /** A release asset of [ENGINES_REPO], named `<engine id>-<name>` there and installed as [name]. */
     private fun asset(role: FileRole, base: String, engineId: String, name: String, sha256: String, size: Long) =
         ModelFile(role, name, "$base/$engineId-$name", sha256, size)
+
+    const val SENSEVOICE = "sensevoice-small"
 
     val engines: List<SttEngineDescriptor> = listOf(
         // ---- User engines, everyday first ----------------------------------------
@@ -440,6 +453,36 @@ object SttEngineCatalog {
                     asset(FileRole.TOKENIZER_CONFIG, base, QWEN3, "tokenizer_config.json", "4942d005604266809309cabc9f4e9cb89ce855d59b14681fdc0e1cc62ea26c4c", 12_487L),
                 )
             },
+        ),
+
+        // Experimental only: not distributed in Marmalade's engine releases. The original
+        // SenseVoice model carries FunASR's custom model license; keep this behind the
+        // Developer engines setting pending an explicit release decision.
+        SttEngineDescriptor(
+            id = SENSEVOICE,
+            displayName = "SenseVoice Small",
+            description = R.string.engine_desc_sensevoice,
+            family = EngineFamily.SENSEVOICE,
+            languages = listOf("zh", "yue", "en", "ja", "ko"),
+            licenseId = "FunASR-Model-1.1",
+            licenseKey = "sensevoice-small",
+            developer = true,
+            livePartials = false,
+            languageOptions = LanguageOptions(SENSEVOICE_HINTS, LanguageOptions.AUTO),
+            files = listOf(
+                ModelFile(
+                    role = FileRole.ENCODER, name = "model.int8.onnx",
+                    url = "$SENSEVOICE_MODEL_URL/model.int8.onnx",
+                    sha256 = "c71f0ce00bec95b07744e116345e33d8cbbe08cef896382cf907bf4b51a2cd51",
+                    sizeBytes = 239_233_841L,
+                ),
+                ModelFile(
+                    role = FileRole.TOKENS, name = "tokens.txt",
+                    url = "$SENSEVOICE_MODEL_URL/tokens.txt",
+                    sha256 = "f449eb28dc567533d7fa59be34e2abca8784f771850c78a47fb731a31429a1dc",
+                    sizeBytes = 315_894L,
+                ),
+            ),
         ),
     )
 

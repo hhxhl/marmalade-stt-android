@@ -66,6 +66,7 @@ LLVM-exception plus its legacy MIT/NCSA texts) and ONNX Runtime 1.28.0's
 | NVIDIA Parakeet TDT_CTC 0.6B ja | Speech recognition engine (Japanese; shown in the app as Parakeet Japanese), int8 ONNX export of the CTC branch by k2-fsa — created by NVIDIA; trained on the ReazonSpeech corpus | Download (Engines screen; from github.com/maxwhipw/marmalade-stt-engines), not in the APK | CC-BY-4.0 |
 | NVIDIA canary-180m-flash | Speech recognition engine (en/es/de/fr), 8-bit ONNX export by k2-fsa — created by NVIDIA | Download (Engines screen; from github.com/maxwhipw/marmalade-stt-engines), not in the APK | CC-BY-4.0 |
 | NVIDIA Nemotron 3.5 ASR Streaming 0.6B | Streaming speech recognition engine for Hindi, Arabic and Vietnamese (the 1120 ms export), int8 ONNX by k2-fsa — by NVIDIA | Download (Engines screen; from github.com/maxwhipw/marmalade-stt-engines), not in the APK | OpenMDW-1.1 |
+| SenseVoiceSmall (int8, k2-fsa export) | Experimental five-language ASR model (developer-only), converted from FunASR/FunAudioLLM SenseVoiceSmall | Download (Developer engines; pinned Hugging Face revision), not in the APK | **FunASR-Model-1.1** |
 | Qwen3-ASR 0.6B | Speech recognition engine for 30 languages (recommended for Chinese and Korean), int8 ONNX export — Copyright 2026 Alibaba Cloud; Qwen3-0.6B tokenizer, Copyright 2024 Alibaba Cloud | Download (Engines screen; from github.com/maxwhipw/marmalade-stt-engines), not in the APK | Apache-2.0 |
 | IBM Granite Speech 5.0 470M TurboCTC | Developer speech recognition engine (English), int8 ONNX export by qwertz92 — created by IBM (IBM Granite Speech Team) | Download (Engines screen, developer engines; from github.com/maxwhipw/marmalade-stt-engines), not in the APK | Apache-2.0 |
 | AndroidX / Compose / Kotlin / Hilt / DataStore | App framework, with Jetpack Navigation, Lifecycle, kotlinx.coroutines, kotlinx.serialization (JSON), Dagger, Material icons and their transitive dependencies (Okio, Guava listenablefuture, javax.inject / jakarta.inject, JetBrains annotations, JSpecify — Apache-2.0; jsr305 annotations — BSD) | APK (including two small AndroidX native libraries, `libandroidx.graphics.path.so` and `libdatastore_shared_counter.so`) | Apache-2.0 |
@@ -331,7 +332,10 @@ each file is checked against the SHA-256 below before it is kept
 (`app/src/main/java/app/marmalade/stt/install/SttEngineCatalog.kt`). Parakeet
 Ultra is our own conversion; every other engine's files are re-hosted there
 unchanged, byte for byte, from the source named in its section below (#75).
-That repository carries each model's attribution in its `NOTICE` and the
+The experimental SenseVoiceSmall engine is an explicit exception: its two files
+are fetched directly from a fixed Hugging Face commit with SHA-256 verification,
+not from our engine releases; see the attribution and hashes below.
+That repository carries the other models' attribution in its `NOTICE` and the
 license texts in `LICENSES/`, and names its assets `<engine id>-<file>`. They
 are listed here and in the in-app licenses screen because the app fetches
 them and runs them.
@@ -340,8 +344,10 @@ The user engines (#45) are Parakeet Ultra, Parakeet TDT_CTC 110M,
 Parakeet TDT_CTC 0.6B ja (#60), canary-180m-flash, Nemotron 3.5 ASR Streaming (1120 ms; Hindi, Arabic, Vietnamese),
 Whisper large-v3-turbo and Qwen3-ASR 0.6B (Chinese and Korean in #50; all 30 of its languages since #88). Granite Speech is a **developer
 engine** (#13): hidden unless Settings → Developer engines is on, offered
-so it can be benchmarked. They are held to the same rules: pinned, hashed,
-license-listed and ethics-reviewed before they are selectable.
+so it can be benchmarked. SenseVoiceSmall is also a **developer engine**:
+its custom model license is not cleared for a commercial release. They are
+held to the same rules: pinned, hashed, license-listed and ethics-reviewed
+before they are selectable.
 
 ### OpenAI Whisper large-v3-turbo (int8, k2-fsa export)
 
@@ -661,3 +667,30 @@ Qwen does not disclose the model's training data; see the model ethics review in
 [`docs/model-reviews/qwen3-asr-0.6b.md`](docs/model-reviews/qwen3-asr-0.6b.md).
 
 
+
+
+### SenseVoiceSmall (experimental int8 ONNX, k2-fsa export)
+
+SenseVoiceSmall by FunASR / FunAudioLLM (Tongyi Speech Team, Alibaba Group):
+https://huggingface.co/FunAudioLLM/SenseVoiceSmall. Model weights are licensed
+under the **FunASR Model Open Source License Agreement, Version 1.1**
+(**FunASR-Model-1.1**), available in the app at
+`app/src/main/assets/licenses/FunASR-Model-License-1.1.txt` and originally at
+https://github.com/modelscope/FunASR/blob/58830eca4012644aac0c3218c3ccc7d98f003fda/MODEL_LICENSE.
+Copyright (C) [2023-2028] [Alibaba Group]. All rights reserved.
+
+The model is a conversion without retraining by k2-fsa / sherpa-onnx, using
+INT8 dynamic quantization of MatMul weights, from `iic/SenseVoiceSmall`.
+Distribution: https://huggingface.co/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17
+commit `2365baeacb507f821a0c8120fcee3d484dba7a07` (immutable snapshot).
+The app downloads these files only when the experimental model is selected:
+
+| File | Bytes | SHA-256 |
+|---|---:|---|
+| `model.int8.onnx` | 239,233,841 | `c71f0ce00bec95b07744e116345e33d8cbbe08cef896382cf907bf4b51a2cd51` |
+| `tokens.txt` | 315,894 | `f449eb28dc567533d7fa59be34e2abca8784f771850c78a47fb731a31429a1dc` |
+
+Runs fully on-device with the existing Silero VAD and Smart Turn. The native
+recognizer exposes separate language, emotion and audio-event fields; the app
+uses only the transcript. Commercial-use rights remain unresolved; see
+`docs/model-reviews/sensevoice-small.md` before distributing any APK.

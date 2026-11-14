@@ -163,6 +163,12 @@ object LicenseCatalog {
             "OpenMDW-1.1", "OpenMDW-1.1.txt",
             "https://openmdw.ai/license/1-1/",
         ),
+        // Custom weight license with a copyright line, so it has a
+        // component-specific body rather than a shared body.
+        License(
+            "FunASR-Model-1.1", null,
+            "https://github.com/modelscope/FunASR/blob/58830eca4012644aac0c3218c3ccc7d98f003fda/MODEL_LICENSE",
+        ),
     )
 
     /**
@@ -578,6 +584,18 @@ object LicenseCatalog {
                 "bundled here. The ONNX graph is a modified version of IBM's checkpoint: exported with " +
                 "one operation rewritten to an equivalent and its weights quantized to int8, without " +
                 "retraining. tokenizer.json is IBM's, unchanged. Runs on-device only.",
+        ),
+        Component(
+            key = "sensevoice-small",
+            name = "SenseVoiceSmall (int8, k2-fsa export)",
+            role = "Experimental offline speech recognition for Chinese, Cantonese, English, Japanese and Korean",
+            shipsIn = "Download (Developer engines; pinned Hugging Face model revision), not included in APK",
+            licenseId = "FunASR-Model-1.1",
+            copyright = listOf("Copyright (C) [2023-2028] [Alibaba Group]. All rights reserved."),
+            textAsset = "FunASR-Model-License-1.1.txt",
+            note = "SenseVoiceSmall by FunASR/FunAudioLLM; converted to INT8 ONNX by k2-fsa without retraining. " +
+                "Custom FunASR Model Open Source License Agreement v1.1; commercial-use status unresolved. " +
+                "The model is downloaded on demand and runs only on-device.",
         ),
         Component(
             key = "qwen3-asr-0.6b",

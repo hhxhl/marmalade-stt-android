@@ -209,7 +209,8 @@ class EngineRatingsTest {
         assertTrue(EngineLanguages.BY_ENGINE.keys.all { SttEngineCatalog.byId(it) != null })
         // Every engine was measured in English, bar the Japanese-only Parakeet-ja.
         assertEquals(
-            SttEngineCatalog.engines.map { it.id }.toSet() - SttEngineCatalog.PARAKEET_JA,
+            SttEngineCatalog.engines.map { it.id }.toSet() -
+                setOf(SttEngineCatalog.PARAKEET_JA, SttEngineCatalog.SENSEVOICE),
             EngineQuality.SCORES.getValue("en").scores.keys,
         )
     }

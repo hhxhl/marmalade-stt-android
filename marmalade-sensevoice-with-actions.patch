@@ -1,0 +1,455 @@
+diff --git a/.github/workflows/build-sensevoice.yml b/.github/workflows/build-sensevoice.yml
+new file mode 100644
+index 0000000..536b2be
+--- /dev/null
++++ b/.github/workflows/build-sensevoice.yml
+@@ -0,0 +1,81 @@
++name: Build Marmalade STT (SenseVoice arm64)
++
++on:
++  workflow_dispatch:
++
++permissions:
++  contents: read
++
++jobs:
++  build:
++    name: Test and build arm64-v8a debug APK
++    runs-on: ubuntu-24.04
++    timeout-minutes: 180
++
++    steps:
++      - name: Checkout including pinned native submodules
++        uses: actions/checkout@v4
++        with:
++          submodules: recursive
++
++      - name: Set up JDK 17
++        uses: actions/setup-java@v4
++        with:
++          distribution: temurin
++          java-version: '17'
++
++      - name: Set up Android SDK
++        uses: android-actions/setup-android@v3
++
++      - name: Install required SDK, NDK and CMake
++        shell: bash
++        run: |
++          sdkmanager --install \
++            'platforms;android-36' \
++            'build-tools;36.0.0' \
++            'ndk;26.3.11579264' \
++            'cmake;3.22.1'
++          yes | sdkmanager --licenses > /dev/null || true
++
++      - name: Configure Gradle cache
++        uses: gradle/actions/setup-gradle@v4
++
++      - name: Verify native submodules
++        shell: bash
++        run: |
++          git submodule status
++          test -f third_party/sherpa-onnx/CMakeLists.txt
++          test -f third_party/marmalade-ui-android/settings.gradle.kts || \
++            test -f third_party/marmalade-ui-android/build.gradle.kts
++
++      - name: Run Android unit tests
++        run: |
++          chmod +x ./gradlew
++          ./gradlew --no-daemon \
++            -PabiFilters=arm64-v8a -PnativeJobs=2 \
++            :app:testFdroidDebugUnitTest
++
++      - name: Build Pixel 8 debug APK
++        run: |
++          ./gradlew --no-daemon \
++            -PabiFilters=arm64-v8a -PnativeJobs=2 \
++            :app:assembleFdroidDebug
++
++      - name: Upload arm64 APK
++        uses: actions/upload-artifact@v4
++        with:
++          name: marmalade-sensevoice-arm64-debug
++          path: app/build/outputs/apk/fdroid/debug/*arm64-v8a*debug.apk
++          if-no-files-found: error
++          retention-days: 14
++
++      - name: Upload test reports if checks fail
++        if: failure()
++        uses: actions/upload-artifact@v4
++        with:
++          name: marmalade-unit-test-reports
++          path: |
++            app/build/reports/tests/
++            app/build/test-results/
++          if-no-files-found: ignore
++          retention-days: 7
+diff --git a/NOTICE.md b/NOTICE.md
+index f3eaca4..f23fd89 100644
+--- a/NOTICE.md
++++ b/NOTICE.md
+@@ -66,6 +66,7 @@ LLVM-exception plus its legacy MIT/NCSA texts) and ONNX Runtime 1.28.0's
+ | NVIDIA Parakeet TDT_CTC 0.6B ja | Speech recognition engine (Japanese; shown in the app as Parakeet Japanese), int8 ONNX export of the CTC branch by k2-fsa — created by NVIDIA; trained on the ReazonSpeech corpus | Download (Engines screen; from github.com/maxwhipw/marmalade-stt-engines), not in the APK | CC-BY-4.0 |
+ | NVIDIA canary-180m-flash | Speech recognition engine (en/es/de/fr), 8-bit ONNX export by k2-fsa — created by NVIDIA | Download (Engines screen; from github.com/maxwhipw/marmalade-stt-engines), not in the APK | CC-BY-4.0 |
+ | NVIDIA Nemotron 3.5 ASR Streaming 0.6B | Streaming speech recognition engine for Hindi, Arabic and Vietnamese (the 1120 ms export), int8 ONNX by k2-fsa — by NVIDIA | Download (Engines screen; from github.com/maxwhipw/marmalade-stt-engines), not in the APK | OpenMDW-1.1 |
++| SenseVoiceSmall (int8, k2-fsa export) | Experimental five-language ASR model (developer-only), converted from FunASR/FunAudioLLM SenseVoiceSmall | Download (Developer engines; pinned Hugging Face revision), not in the APK | **FunASR-Model-1.1** |
+ | Qwen3-ASR 0.6B | Speech recognition engine for 30 languages (recommended for Chinese and Korean), int8 ONNX export — Copyright 2026 Alibaba Cloud; Qwen3-0.6B tokenizer, Copyright 2024 Alibaba Cloud | Download (Engines screen; from github.com/maxwhipw/marmalade-stt-engines), not in the APK | Apache-2.0 |
+ | IBM Granite Speech 5.0 470M TurboCTC | Developer speech recognition engine (English), int8 ONNX export by qwertz92 — created by IBM (IBM Granite Speech Team) | Download (Engines screen, developer engines; from github.com/maxwhipw/marmalade-stt-engines), not in the APK | Apache-2.0 |
+ | AndroidX / Compose / Kotlin / Hilt / DataStore | App framework, with Jetpack Navigation, Lifecycle, kotlinx.coroutines, kotlinx.serialization (JSON), Dagger, Material icons and their transitive dependencies (Okio, Guava listenablefuture, javax.inject / jakarta.inject, JetBrains annotations, JSpecify — Apache-2.0; jsr305 annotations — BSD) | APK (including two small AndroidX native libraries, `libandroidx.graphics.path.so` and `libdatastore_shared_counter.so`) | Apache-2.0 |
+@@ -331,7 +332,10 @@ each file is checked against the SHA-256 below before it is kept
+ (`app/src/main/java/app/marmalade/stt/install/SttEngineCatalog.kt`). Parakeet
+ Ultra is our own conversion; every other engine's files are re-hosted there
+ unchanged, byte for byte, from the source named in its section below (#75).
+-That repository carries each model's attribution in its `NOTICE` and the
++The experimental SenseVoiceSmall engine is an explicit exception: its two files
++are fetched directly from a fixed Hugging Face commit with SHA-256 verification,
++not from our engine releases; see the attribution and hashes below.
++That repository carries the other models' attribution in its `NOTICE` and the
+ license texts in `LICENSES/`, and names its assets `<engine id>-<file>`. They
+ are listed here and in the in-app licenses screen because the app fetches
+ them and runs them.
+@@ -340,8 +344,10 @@ The user engines (#45) are Parakeet Ultra, Parakeet TDT_CTC 110M,
+ Parakeet TDT_CTC 0.6B ja (#60), canary-180m-flash, Nemotron 3.5 ASR Streaming (1120 ms; Hindi, Arabic, Vietnamese),
+ Whisper large-v3-turbo and Qwen3-ASR 0.6B (Chinese and Korean in #50; all 30 of its languages since #88). Granite Speech is a **developer
+ engine** (#13): hidden unless Settings → Developer engines is on, offered
+-so it can be benchmarked. They are held to the same rules: pinned, hashed,
+-license-listed and ethics-reviewed before they are selectable.
++so it can be benchmarked. SenseVoiceSmall is also a **developer engine**:
++its custom model license is not cleared for a commercial release. They are
++held to the same rules: pinned, hashed, license-listed and ethics-reviewed
++before they are selectable.
+ 
+ ### OpenAI Whisper large-v3-turbo (int8, k2-fsa export)
+ 
+@@ -661,3 +667,30 @@ Qwen does not disclose the model's training data; see the model ethics review in
+ [`docs/model-reviews/qwen3-asr-0.6b.md`](docs/model-reviews/qwen3-asr-0.6b.md).
+ 
+ 
++
++
++### SenseVoiceSmall (experimental int8 ONNX, k2-fsa export)
++
++SenseVoiceSmall by FunASR / FunAudioLLM (Tongyi Speech Team, Alibaba Group):
++https://huggingface.co/FunAudioLLM/SenseVoiceSmall. Model weights are licensed
++under the **FunASR Model Open Source License Agreement, Version 1.1**
++(**FunASR-Model-1.1**), available in the app at
++`app/src/main/assets/licenses/FunASR-Model-License-1.1.txt` and originally at
++https://github.com/modelscope/FunASR/blob/58830eca4012644aac0c3218c3ccc7d98f003fda/MODEL_LICENSE.
++Copyright (C) [2023-2028] [Alibaba Group]. All rights reserved.
++
++The model is a conversion without retraining by k2-fsa / sherpa-onnx, using
++INT8 dynamic quantization of MatMul weights, from `iic/SenseVoiceSmall`.
++Distribution: https://huggingface.co/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17
++commit `2365baeacb507f821a0c8120fcee3d484dba7a07` (immutable snapshot).
++The app downloads these files only when the experimental model is selected:
++
++| File | Bytes | SHA-256 |
++|---|---:|---|
++| `model.int8.onnx` | 239,233,841 | `c71f0ce00bec95b07744e116345e33d8cbbe08cef896382cf907bf4b51a2cd51` |
++| `tokens.txt` | 315,894 | `f449eb28dc567533d7fa59be34e2abca8784f771850c78a47fb731a31429a1dc` |
++
++Runs fully on-device with the existing Silero VAD and Smart Turn. The native
++recognizer exposes separate language, emotion and audio-event fields; the app
++uses only the transcript. Commercial-use rights remain unresolved; see
++`docs/model-reviews/sensevoice-small.md` before distributing any APK.
+diff --git a/app/src/main/java/app/marmalade/stt/data/LicenseCatalog.kt b/app/src/main/java/app/marmalade/stt/data/LicenseCatalog.kt
+index 3757f58..84cfd13 100644
+--- a/app/src/main/java/app/marmalade/stt/data/LicenseCatalog.kt
++++ b/app/src/main/java/app/marmalade/stt/data/LicenseCatalog.kt
+@@ -163,6 +163,12 @@ object LicenseCatalog {
+             "OpenMDW-1.1", "OpenMDW-1.1.txt",
+             "https://openmdw.ai/license/1-1/",
+         ),
++        // Custom weight license with a copyright line, so it has a
++        // component-specific body rather than a shared body.
++        License(
++            "FunASR-Model-1.1", null,
++            "https://github.com/modelscope/FunASR/blob/58830eca4012644aac0c3218c3ccc7d98f003fda/MODEL_LICENSE",
++        ),
+     )
+ 
+     /**
+@@ -579,6 +585,18 @@ object LicenseCatalog {
+                 "one operation rewritten to an equivalent and its weights quantized to int8, without " +
+                 "retraining. tokenizer.json is IBM's, unchanged. Runs on-device only.",
+         ),
++        Component(
++            key = "sensevoice-small",
++            name = "SenseVoiceSmall (int8, k2-fsa export)",
++            role = "Experimental offline speech recognition for Chinese, Cantonese, English, Japanese and Korean",
++            shipsIn = "Download (Developer engines; pinned Hugging Face model revision), not included in APK",
++            licenseId = "FunASR-Model-1.1",
++            copyright = listOf("Copyright (C) [2023-2028] [Alibaba Group]. All rights reserved."),
++            textAsset = "FunASR-Model-License-1.1.txt",
++            note = "SenseVoiceSmall by FunASR/FunAudioLLM; converted to INT8 ONNX by k2-fsa without retraining. " +
++                "Custom FunASR Model Open Source License Agreement v1.1; commercial-use status unresolved. " +
++                "The model is downloaded on demand and runs only on-device.",
++        ),
+         Component(
+             key = "qwen3-asr-0.6b",
+             name = "Qwen3-ASR 0.6B",
+diff --git a/app/src/main/java/app/marmalade/stt/install/SpeedBudget.kt b/app/src/main/java/app/marmalade/stt/install/SpeedBudget.kt
+index a00d8fe..4807e01 100644
+--- a/app/src/main/java/app/marmalade/stt/install/SpeedBudget.kt
++++ b/app/src/main/java/app/marmalade/stt/install/SpeedBudget.kt
+@@ -268,7 +268,9 @@ object SpeedBudget {
+     fun threadPenalty(family: EngineFamily, threads: Int): Double {
+         val t = threads.coerceIn(2, REFERENCE_THREADS)
+         return when (family) {
+-            EngineFamily.NEMO_TRANSDUCER, EngineFamily.NEMO_CTC, EngineFamily.GRANITE_CTC -> when (t) {
++            // SenseVoice is non-autoregressive like CTC. This is a thread-policy
++            // fallback, NOT a measured speed estimate; its speed meter stays unmeasured.
++            EngineFamily.SENSEVOICE, EngineFamily.NEMO_TRANSDUCER, EngineFamily.NEMO_CTC, EngineFamily.GRANITE_CTC -> when (t) {
+                 2 -> 1.45
+                 3 -> 1.14
+                 else -> 1.0
+diff --git a/app/src/main/java/app/marmalade/stt/install/SttEngineCatalog.kt b/app/src/main/java/app/marmalade/stt/install/SttEngineCatalog.kt
+index c959612..9a135c7 100644
+--- a/app/src/main/java/app/marmalade/stt/install/SttEngineCatalog.kt
++++ b/app/src/main/java/app/marmalade/stt/install/SttEngineCatalog.kt
+@@ -30,6 +30,9 @@ enum class EngineFamily {
+     /** Offline Qwen3-ASR (conv frontend + encoder + LLM decoder + BPE tokenizer), same session as Whisper. */
+     QWEN3_ASR,
+ 
++    /** Offline SenseVoice-Small int8 ONNX, simulated streaming over the bundled VAD. */
++    SENSEVOICE,
++
+     /**
+      * True streaming NeMo transducer (Nemotron 3.5, cache-aware):
+      * sherpa-onnx's OnlineRecognizer emits partials as audio arrives. Silero
+@@ -55,7 +58,7 @@ enum class EngineFamily {
+             WHISPER -> Recognizer.WHISPER
+             QWEN3_ASR -> Recognizer.QWEN3
+             CANARY -> Recognizer.CANARY
+-            NEMO_TRANSDUCER, NEMO_CTC, STREAMING_TRANSDUCER, GRANITE_CTC -> Recognizer.OTHER
++            SENSEVOICE, NEMO_TRANSDUCER, NEMO_CTC, STREAMING_TRANSDUCER, GRANITE_CTC -> Recognizer.OTHER
+         }
+ }
+ 
+@@ -229,6 +232,14 @@ object SttEngineCatalog {
+     /** Qwen3-ASR takes a hint for each of its 30 languages (#88; `QWEN3_LANGUAGE_NAMES` in SherpaBackends names each). */
+     private val QWEN3_HINTS = listOf(LanguageOptions.AUTO) + EngineLanguages.QWEN3.sorted()
+ 
++    /** The five SenseVoice languages, including explicit language override. */
++    private val SENSEVOICE_HINTS = listOf(LanguageOptions.AUTO, "zh", "yue", "en", "ja", "ko")
++
++    /** This experimental model is pinned to a specific Hugging Face commit, not the mutable main branch. */
++    private const val SENSEVOICE_MODEL_URL =
++        "https://huggingface.co/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/" +
++            "resolve/2365baeacb507f821a0c8120fcee3d484dba7a07"
++
+     /** Our engines repo (D5): every engine's files are release assets there, ours (#39) and re-hosted ones (#75). */
+     private const val ENGINES_REPO = "maxwhipw/marmalade-stt-engines"
+ 
+@@ -238,6 +249,8 @@ object SttEngineCatalog {
+     private fun asset(role: FileRole, base: String, engineId: String, name: String, sha256: String, size: Long) =
+         ModelFile(role, name, "$base/$engineId-$name", sha256, size)
+ 
++    const val SENSEVOICE = "sensevoice-small"
++
+     val engines: List<SttEngineDescriptor> = listOf(
+         // ---- User engines, everyday first ----------------------------------------
+         // Moondream's post-trained Parakeet v3 (#25): v3's graph and vocabulary with Moondream's
+@@ -441,6 +454,36 @@ object SttEngineCatalog {
+                 )
+             },
+         ),
++
++        // Experimental only: not distributed in Marmalade's engine releases. The original
++        // SenseVoice model carries FunASR's custom model license; keep this behind the
++        // Developer engines setting pending an explicit release decision.
++        SttEngineDescriptor(
++            id = SENSEVOICE,
++            displayName = "SenseVoice Small",
++            description = R.string.engine_desc_sensevoice,
++            family = EngineFamily.SENSEVOICE,
++            languages = listOf("zh", "yue", "en", "ja", "ko"),
++            licenseId = "FunASR-Model-1.1",
++            licenseKey = "sensevoice-small",
++            developer = true,
++            livePartials = false,
++            languageOptions = LanguageOptions(SENSEVOICE_HINTS, LanguageOptions.AUTO),
++            files = listOf(
++                ModelFile(
++                    role = FileRole.ENCODER, name = "model.int8.onnx",
++                    url = "$SENSEVOICE_MODEL_URL/model.int8.onnx",
++                    sha256 = "c71f0ce00bec95b07744e116345e33d8cbbe08cef896382cf907bf4b51a2cd51",
++                    sizeBytes = 239_233_841L,
++                ),
++                ModelFile(
++                    role = FileRole.TOKENS, name = "tokens.txt",
++                    url = "$SENSEVOICE_MODEL_URL/tokens.txt",
++                    sha256 = "f449eb28dc567533d7fa59be34e2abca8784f771850c78a47fb731a31429a1dc",
++                    sizeBytes = 315_894L,
++                ),
++            ),
++        ),
+     )
+ 
+     const val PARAKEET_ULTRA = "parakeet-ultra"
+diff --git a/app/src/main/java/app/marmalade/stt/speech/SherpaBackends.kt b/app/src/main/java/app/marmalade/stt/speech/SherpaBackends.kt
+index fd2b596..83697b6 100644
+--- a/app/src/main/java/app/marmalade/stt/speech/SherpaBackends.kt
++++ b/app/src/main/java/app/marmalade/stt/speech/SherpaBackends.kt
+@@ -9,6 +9,7 @@ import com.k2fsa.sherpa.onnx.OfflineCanaryModelConfig
+ import com.k2fsa.sherpa.onnx.OfflineModelConfig
+ import com.k2fsa.sherpa.onnx.OfflineNemoEncDecCtcModelConfig
+ import com.k2fsa.sherpa.onnx.OfflineQwen3AsrModelConfig
++import com.k2fsa.sherpa.onnx.OfflineSenseVoiceModelConfig
+ import com.k2fsa.sherpa.onnx.OfflineRecognizer
+ import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
+ import com.k2fsa.sherpa.onnx.OfflineStream
+@@ -172,6 +173,14 @@ internal fun offlineModelConfig(descriptor: SttEngineDescriptor, path: (FileRole
+             ),
+             tokens = path(FileRole.TOKENS),
+         )
++        EngineFamily.SENSEVOICE -> OfflineModelConfig(
++            senseVoice = OfflineSenseVoiceModelConfig(
++                model = path(FileRole.ENCODER),
++                language = language.ifBlank { "auto" },
++                useInverseTextNormalization = true,
++            ),
++            tokens = path(FileRole.TOKENS),
++        )
+         EngineFamily.QWEN3_ASR -> OfflineModelConfig(
+             qwen3Asr = OfflineQwen3AsrModelConfig(
+                 convFrontend = path(FileRole.CONV_FRONTEND),
+diff --git a/app/src/main/res/values-zh-rCN/strings_engines.xml b/app/src/main/res/values-zh-rCN/strings_engines.xml
+index d8b83bc..929aba1 100644
+--- a/app/src/main/res/values-zh-rCN/strings_engines.xml
++++ b/app/src/main/res/values-zh-rCN/strings_engines.xml
+@@ -65,4 +65,5 @@
+     <string name="engine_desc_whisper_turbo">OpenAI Whisper large-v3-turbo，多语言。最准确的 Whisper。你停顿时才出现文字。</string>
+     <string name="engine_desc_granite">IBM 的英语 CTC 模型：在我们的英语测试中最准确。大写字母和标点由应用自带的格式化器添加。</string>
+     <string name="engine_desc_qwen3">Alibaba 的离线模型，带一个小型语言模型解码器：支持 30 种语言，自动检测，推荐用于中文和韩语。你停顿时才出现文字。</string>
++    <string name="engine_desc_sensevoice">实验性 SenseVoice Small INT8 离线模型，支持中文、粤语、英语、日语和韩语。停顿后显示文字。</string>
+ </resources>
+diff --git a/app/src/main/res/values/strings_engines.xml b/app/src/main/res/values/strings_engines.xml
+index 01a193c..61c4b87 100644
+--- a/app/src/main/res/values/strings_engines.xml
++++ b/app/src/main/res/values/strings_engines.xml
+@@ -84,5 +84,6 @@
+     <string name="engine_desc_nemotron_35">NVIDIA\'s streaming model for Hindi, Arabic and Vietnamese: text appears as you speak.</string>
+     <string name="engine_desc_whisper_turbo">OpenAI Whisper large-v3-turbo, multilingual. The most accurate Whisper. Text appears when you pause.</string>
+     <string name="engine_desc_granite">IBM\'s English CTC model: the most accurate in our English tests. Case and punctuation come from the app\'s own formatter.</string>
++    <string name="engine_desc_sensevoice">Experimental offline SenseVoice Small INT8 model for Chinese, Cantonese, English, Japanese and Korean. Text appears when you pause.</string>
+     <string name="engine_desc_qwen3">Alibaba\'s offline model with a small language-model decoder: 30 languages, detected automatically, recommended for Chinese and Korean. Text appears when you pause.</string>
+ </resources>
+diff --git a/app/src/test/java/app/marmalade/stt/install/EngineRatingsTest.kt b/app/src/test/java/app/marmalade/stt/install/EngineRatingsTest.kt
+index 6ae053d..a6d9f53 100644
+--- a/app/src/test/java/app/marmalade/stt/install/EngineRatingsTest.kt
++++ b/app/src/test/java/app/marmalade/stt/install/EngineRatingsTest.kt
+@@ -209,7 +209,8 @@ class EngineRatingsTest {
+         assertTrue(EngineLanguages.BY_ENGINE.keys.all { SttEngineCatalog.byId(it) != null })
+         // Every engine was measured in English, bar the Japanese-only Parakeet-ja.
+         assertEquals(
+-            SttEngineCatalog.engines.map { it.id }.toSet() - SttEngineCatalog.PARAKEET_JA,
++            SttEngineCatalog.engines.map { it.id }.toSet() -
++                setOf(SttEngineCatalog.PARAKEET_JA, SttEngineCatalog.SENSEVOICE),
+             EngineQuality.SCORES.getValue("en").scores.keys,
+         )
+     }
+diff --git a/app/src/test/java/app/marmalade/stt/install/SpeedBudgetTest.kt b/app/src/test/java/app/marmalade/stt/install/SpeedBudgetTest.kt
+index ebeeb15..6659763 100644
+--- a/app/src/test/java/app/marmalade/stt/install/SpeedBudgetTest.kt
++++ b/app/src/test/java/app/marmalade/stt/install/SpeedBudgetTest.kt
+@@ -162,7 +162,8 @@ class SpeedBudgetTest {
+ 
+     @Test
+     fun `every catalog engine has a reference cost and Parakeet Ultra is the unit`() {
+-        assertEquals(SttEngineCatalog.engines.map { it.id }.toSet(), SpeedBudget.REFERENCE.keys)
++        // SenseVoice is experimental: no Pixel 8a speed/memory run yet.
++        assertEquals(SttEngineCatalog.engines.map { it.id }.toSet() - SttEngineCatalog.SENSEVOICE, SpeedBudget.REFERENCE.keys)
+         assertEquals(1.0, SpeedBudget.REFERENCE.getValue(SttEngineCatalog.PARAKEET_ULTRA).relativeCost, 0.0)
+     }
+ 
+diff --git a/app/src/test/java/app/marmalade/stt/install/SttEngineCatalogTest.kt b/app/src/test/java/app/marmalade/stt/install/SttEngineCatalogTest.kt
+index 91dd29e..7c8932d 100644
+--- a/app/src/test/java/app/marmalade/stt/install/SttEngineCatalogTest.kt
++++ b/app/src/test/java/app/marmalade/stt/install/SttEngineCatalogTest.kt
+@@ -16,6 +16,9 @@ class SttEngineCatalogTest {
+ 
+     private companion object {
+         const val OUR_RELEASES = "https://github.com/maxwhipw/marmalade-stt-engines/releases/download/"
++        const val SENSEVOICE_URL = "https://huggingface.co/csukuangfj/" +
++            "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/" +
++            "resolve/2365baeacb507f821a0c8120fcee3d484dba7a07/"
+         val GRAPH_ROLES = setOf(FileRole.ENCODER, FileRole.DECODER, FileRole.JOINER, FileRole.CONV_FRONTEND)
+     }
+ 
+@@ -31,7 +34,11 @@ class SttEngineCatalogTest {
+     /** An engine's file sets: its download, and the previous set older versions installed (#78) if any. */
+     private fun SttEngineDescriptor.fileSets(): List<List<ModelFile>> = listOfNotNull(files, previousFiles.ifEmpty { null })
+ 
+-    private fun tagOf(f: ModelFile) = f.url.substringAfter(OUR_RELEASES).substringBefore('/')
++    private fun tagOf(f: ModelFile) = if (f.url.startsWith(SENSEVOICE_URL)) {
++        "sensevoice-hf-pinned"
++    } else {
++        f.url.substringAfter(OUR_RELEASES).substringBefore('/')
++    }
+ 
+     @Test
+     fun everyFileIsPinnedHashedAndSized() {
+@@ -47,9 +54,14 @@ class SttEngineCatalogTest {
+                 assertTrue("$where not /main/", !f.url.contains("/main/"))
+                 // Every file is a release asset of our engines repo (#39, #75): pinned by
+                 // release tag, named `<engine id>-<name>`. No download goes to Hugging Face.
+-                assertTrue("$where is on our engines repo", f.url.startsWith(OUR_RELEASES))
+-                assertTrue("$where pinned tag", f.url.contains(Regex("/download/v[0-9]+/")))
+-                assertTrue("$where url names the file", f.url.endsWith("/${engine.id}-${f.name}"))
++                if (engine.id == SttEngineCatalog.SENSEVOICE) {
++                    assertTrue("$where is developer-only", engine.developer)
++                    assertEquals("$where pinned upstream URL", SENSEVOICE_URL + f.name, f.url)
++                } else {
++                    assertTrue("$where is on our engines repo", f.url.startsWith(OUR_RELEASES))
++                    assertTrue("$where pinned tag", f.url.contains(Regex("/download/v[0-9]+/")))
++                    assertTrue("$where url names the file", f.url.endsWith("/${engine.id}-${f.name}"))
++                }
+                 // ONNX Runtime graphs: the .onnx exports, or pre-optimised ORT-format files (#78).
+                 if (f.role in GRAPH_ROLES) assertTrue("$where is .onnx or .ort", f.name.matches(Regex(".*\\.(onnx|ort)")))
+             }
+@@ -115,6 +127,7 @@ class SttEngineCatalogTest {
+             EngineFamily.NEMO_TRANSDUCER to listOf(FileRole.ENCODER, FileRole.DECODER, FileRole.JOINER, FileRole.TOKENS),
+             EngineFamily.NEMO_CTC to listOf(FileRole.ENCODER, FileRole.TOKENS),
+             EngineFamily.CANARY to listOf(FileRole.ENCODER, FileRole.DECODER, FileRole.TOKENS),
++            EngineFamily.SENSEVOICE to listOf(FileRole.ENCODER, FileRole.TOKENS),
+             EngineFamily.QWEN3_ASR to listOf(
+                 FileRole.ENCODER, FileRole.DECODER, FileRole.CONV_FRONTEND,
+                 FileRole.TOKENIZER_VOCAB, FileRole.TOKENIZER_MERGES, FileRole.TOKENIZER_CONFIG,
+@@ -150,7 +163,7 @@ class SttEngineCatalogTest {
+             listOf(
+                 SttEngineCatalog.PARAKEET_ULTRA, "parakeet-tdt-110m-en", SttEngineCatalog.PARAKEET_JA,
+                 "canary-180m-flash", SttEngineCatalog.NEMOTRON_35_1120MS, "whisper-turbo",
+-                "granite-speech-5-470m", "qwen3-asr-0-6b",
++                "granite-speech-5-470m", "qwen3-asr-0-6b", SttEngineCatalog.SENSEVOICE,
+             ),
+             engines.map { it.id },
+         )
+@@ -174,7 +187,7 @@ class SttEngineCatalogTest {
+         )
+         assertEquals(nonDeveloper, engines.filterNot { it.developer }.map { it.id }.toSet())
+         assertEquals(
+-            setOf("granite-speech-5-470m"),
++            setOf("granite-speech-5-470m", SttEngineCatalog.SENSEVOICE),
+             engines.filter { it.developer }.map { it.id }.toSet(),
+         )
+         assertEquals(nonDeveloper, SttEngineCatalog.visibleTo(showDeveloper = false).map { it.id }.toSet())
+@@ -194,7 +207,7 @@ class SttEngineCatalogTest {
+         assertEquals(
+             listOf(
+                 "Parakeet Ultra", "Parakeet 110M", "Parakeet Japanese", "Canary 180M Flash", "Nemotron 3.5",
+-                "Whisper Large v3 Turbo", "Granite Speech", "Qwen3-ASR",
++                "Whisper Large v3 Turbo", "Granite Speech", "Qwen3-ASR", "SenseVoice Small",
+             ),
+             engines.map { it.displayName },
+         )
+@@ -269,7 +282,7 @@ class SttEngineCatalogTest {
+     @Test
+     fun streamingEnginesAreTheStreamingFamilyAndOnlyTheHeavyDecodersSkipLivePartials() {
+         for (engine in engines) {
+-            assertEquals(engine.id, engine.id !in setOf("whisper-turbo", "qwen3-asr-0-6b"), engine.livePartials)
++            assertEquals(engine.id, engine.id !in setOf("whisper-turbo", "qwen3-asr-0-6b", SttEngineCatalog.SENSEVOICE), engine.livePartials)
+             assertEquals(engine.id, engine.id.contains("streaming"), engine.family.streaming)
+         }
+     }

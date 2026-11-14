@@ -268,7 +268,9 @@ object SpeedBudget {
     fun threadPenalty(family: EngineFamily, threads: Int): Double {
         val t = threads.coerceIn(2, REFERENCE_THREADS)
         return when (family) {
-            EngineFamily.NEMO_TRANSDUCER, EngineFamily.NEMO_CTC, EngineFamily.GRANITE_CTC -> when (t) {
+            // SenseVoice is non-autoregressive like CTC. This is a thread-policy
+            // fallback, NOT a measured speed estimate; its speed meter stays unmeasured.
+            EngineFamily.SENSEVOICE, EngineFamily.NEMO_TRANSDUCER, EngineFamily.NEMO_CTC, EngineFamily.GRANITE_CTC -> when (t) {
                 2 -> 1.45
                 3 -> 1.14
                 else -> 1.0

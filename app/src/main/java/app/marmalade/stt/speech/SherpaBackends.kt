@@ -9,6 +9,7 @@ import com.k2fsa.sherpa.onnx.OfflineCanaryModelConfig
 import com.k2fsa.sherpa.onnx.OfflineModelConfig
 import com.k2fsa.sherpa.onnx.OfflineNemoEncDecCtcModelConfig
 import com.k2fsa.sherpa.onnx.OfflineQwen3AsrModelConfig
+import com.k2fsa.sherpa.onnx.OfflineSenseVoiceModelConfig
 import com.k2fsa.sherpa.onnx.OfflineRecognizer
 import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
 import com.k2fsa.sherpa.onnx.OfflineStream
@@ -169,6 +170,14 @@ internal fun offlineModelConfig(descriptor: SttEngineDescriptor, path: (FileRole
                 srcLang = language.ifEmpty { "en" },
                 tgtLang = language.ifEmpty { "en" },
                 usePnc = true,
+            ),
+            tokens = path(FileRole.TOKENS),
+        )
+        EngineFamily.SENSEVOICE -> OfflineModelConfig(
+            senseVoice = OfflineSenseVoiceModelConfig(
+                model = path(FileRole.ENCODER),
+                language = language.ifBlank { "auto" },
+                useInverseTextNormalization = true,
             ),
             tokens = path(FileRole.TOKENS),
         )

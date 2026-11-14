@@ -16,6 +16,9 @@ class SttEngineCatalogTest {
 
     private companion object {
         const val OUR_RELEASES = "https://github.com/maxwhipw/marmalade-stt-engines/releases/download/"
+        const val SENSEVOICE_URL = "https://huggingface.co/csukuangfj/" +
+            "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/" +
+            "resolve/2365baeacb507f821a0c8120fcee3d484dba7a07/"
         val GRAPH_ROLES = setOf(FileRole.ENCODER, FileRole.DECODER, FileRole.JOINER, FileRole.CONV_FRONTEND)
     }
 
@@ -31,7 +34,11 @@ class SttEngineCatalogTest {
     /** An engine's file sets: its download, and the previous set older versions installed (#78) if any. */
     private fun SttEngineDescriptor.fileSets(): List<List<ModelFile>> = listOfNotNull(files, previousFiles.ifEmpty { null })
 
-    private fun tagOf(f: ModelFile) = f.url.substringAfter(OUR_RELEASES).substringBefore('/')
+    private fun tagOf(f: ModelFile) = if (f.url.startsWith(SENSEVOICE_URL)) {
+        "sensevoice-hf-pinned"
+    } else {
+        f.url.substringAfter(OUR_RELEASES).substringBefore('/')
+    }
 
     @Test
     fun everyFileIsPinnedHashedAndSized() {
@@ -47,9 +54,14 @@ class SttEngineCatalogTest {
                 assertTrue("$where not /main/", !f.url.contains("/main/"))
                 // Every file is a release asset of our engines repo (#39, #75): pinned by
                 // release tag, named `<engine id>-<name>`. No download goes to Hugging Face.
-                assertTrue("$where is on our engines repo", f.url.startsWith(OUR_RELEASES))
-                assertTrue("$where pinned tag", f.url.contains(Regex("/download/v[0-9]+/")))
-                assertTrue("$where url names the file", f.url.endsWith("/${engine.id}-${f.name}"))
+                if (engine.id == SttEngineCatalog.SENSEVOICE) {
+                    assertTrue("$where is developer-only", engine.developer)
+                    assertEquals("$where pinned upstream URL", SENSEVOICE_URL + f.name, f.url)
+                } else {
+                    assertTrue("$where is on our engines repo", f.url.startsWith(OUR_RELEASES))
+                    assertTrue("$where pinned tag", f.url.contains(Regex("/download/v[0-9]+/")))
+                    assertTrue("$where url names the file", f.url.endsWith("/${engine.id}-${f.name}"))
+                }
                 // ONNX Runtime graphs: the .onnx exports, or pre-optimised ORT-format files (#78).
                 if (f.role in GRAPH_ROLES) assertTrue("$where is .onnx or .ort", f.name.matches(Regex(".*\\.(onnx|ort)")))
             }
@@ -115,6 +127,7 @@ class SttEngineCatalogTest {
             EngineFamily.NEMO_TRANSDUCER to listOf(FileRole.ENCODER, FileRole.DECODER, FileRole.JOINER, FileRole.TOKENS),
             EngineFamily.NEMO_CTC to listOf(FileRole.ENCODER, FileRole.TOKENS),
             EngineFamily.CANARY to listOf(FileRole.ENCODER, FileRole.DECODER, FileRole.TOKENS),
+            EngineFamily.SENSEVOICE to listOf(FileRole.ENCODER, FileRole.TOKENS),
             EngineFamily.QWEN3_ASR to listOf(
                 FileRole.ENCODER, FileRole.DECODER, FileRole.CONV_FRONTEND,
                 FileRole.TOKENIZER_VOCAB, FileRole.TOKENIZER_MERGES, FileRole.TOKENIZER_CONFIG,
@@ -150,7 +163,7 @@ class SttEngineCatalogTest {
             listOf(
                 SttEngineCatalog.PARAKEET_ULTRA, "parakeet-tdt-110m-en", SttEngineCatalog.PARAKEET_JA,
                 "canary-180m-flash", SttEngineCatalog.NEMOTRON_35_1120MS, "whisper-turbo",
-                "granite-speech-5-470m", "qwen3-asr-0-6b",
+                "granite-speech-5-470m", "qwen3-asr-0-6b", SttEngineCatalog.SENSEVOICE,
             ),
             engines.map { it.id },
         )
@@ -174,7 +187,7 @@ class SttEngineCatalogTest {
         )
         assertEquals(nonDeveloper, engines.filterNot { it.developer }.map { it.id }.toSet())
         assertEquals(
-            setOf("granite-speech-5-470m"),
+            setOf("granite-speech-5-470m", SttEngineCatalog.SENSEVOICE),
             engines.filter { it.developer }.map { it.id }.toSet(),
         )
         assertEquals(nonDeveloper, SttEngineCatalog.visibleTo(showDeveloper = false).map { it.id }.toSet())
@@ -194,7 +207,7 @@ class SttEngineCatalogTest {
         assertEquals(
             listOf(
                 "Parakeet Ultra", "Parakeet 110M", "Parakeet Japanese", "Canary 180M Flash", "Nemotron 3.5",
-                "Whisper Large v3 Turbo", "Granite Speech", "Qwen3-ASR",
+                "Whisper Large v3 Turbo", "Granite Speech", "Qwen3-ASR", "SenseVoice Small",
             ),
             engines.map { it.displayName },
         )
@@ -269,7 +282,7 @@ class SttEngineCatalogTest {
     @Test
     fun streamingEnginesAreTheStreamingFamilyAndOnlyTheHeavyDecodersSkipLivePartials() {
         for (engine in engines) {
-            assertEquals(engine.id, engine.id !in setOf("whisper-turbo", "qwen3-asr-0-6b"), engine.livePartials)
+            assertEquals(engine.id, engine.id !in setOf("whisper-turbo", "qwen3-asr-0-6b", SttEngineCatalog.SENSEVOICE), engine.livePartials)
             assertEquals(engine.id, engine.id.contains("streaming"), engine.family.streaming)
         }
     }
