@@ -67,4 +67,5 @@
     <string name="engine_desc_whisper_turbo">OpenAI Whisper large-v3-turbo, đa ngôn ngữ. Whisper chính xác nhất. Văn bản xuất hiện khi bạn ngừng nói.</string>
     <string name="engine_desc_granite">Mô hình CTC tiếng Anh của IBM: chính xác nhất trong các bài kiểm tra tiếng Anh của chúng tôi. Chữ hoa và dấu câu do bộ định dạng riêng của ứng dụng thêm vào.</string>
     <string name="engine_desc_qwen3">Mô hình ngoại tuyến của Alibaba với bộ giải mã mô hình ngôn ngữ nhỏ: 30 ngôn ngữ, tự động phát hiện, và được đề xuất cho tiếng Trung và tiếng Hàn. Văn bản xuất hiện khi bạn ngừng nói.</string>
+    <string name="engine_desc_sensevoice">Mô hình SenseVoice Small INT8 ngoại tuyến thử nghiệm cho tiếng Trung, tiếng Quảng Đông, tiếng Anh, tiếng Nhật và tiếng Hàn. Văn bản xuất hiện khi bạn tạm dừng.</string>
 </resources>

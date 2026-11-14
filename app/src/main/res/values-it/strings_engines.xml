@@ -67,4 +67,5 @@
     <string name="engine_desc_whisper_turbo">OpenAI Whisper large-v3-turbo, multilingue. Il Whisper più preciso. Il testo compare quando fai una pausa.</string>
     <string name="engine_desc_granite">Il modello CTC inglese di IBM: il più preciso nei nostri test in inglese. Maiuscole e punteggiatura vengono dal formattatore dell\'app.</string>
     <string name="engine_desc_qwen3">Il modello offline di Alibaba con un piccolo decoder basato su un modello linguistico: 30 lingue, rilevate automaticamente, ed è consigliato per il cinese e il coreano. Il testo compare quando fai una pausa.</string>
+    <string name="engine_desc_sensevoice">Modello offline sperimentale SenseVoice Small INT8 per cinese, cantonese, inglese, giapponese e coreano. Il testo appare durante le pause.</string>
 </resources>

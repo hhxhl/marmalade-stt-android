@@ -65,4 +65,5 @@
     <string name="engine_desc_whisper_turbo">OpenAI Whisper large-v3-turbo, 다국어. 가장 정확한 Whisper입니다. 말을 멈추면 텍스트가 표시됩니다.</string>
     <string name="engine_desc_granite">IBM의 영어 CTC 모델: 자체 영어 테스트에서 가장 정확했습니다. 대문자와 문장부호는 앱 자체 포매터가 넣습니다.</string>
     <string name="engine_desc_qwen3">작은 언어 모델 디코더를 갖춘 Alibaba의 오프라인 모델: 30개 언어를 자동으로 감지하며, 중국어와 한국어에 추천하는 모델입니다. 말을 멈추면 텍스트가 표시됩니다.</string>
+    <string name="engine_desc_sensevoice">중국어, 광둥어, 영어, 일본어, 한국어를 지원하는 실험용 오프라인 SenseVoice Small INT8 모델입니다. 말을 잠시 멈추면 텍스트가 나타납니다.</string>
 </resources>
