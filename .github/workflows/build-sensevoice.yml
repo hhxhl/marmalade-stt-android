@@ -1,4 +1,4 @@
-name: Build Marmalade STT (SenseVoice arm64)
+name: Build Marmalade STT (Signed Release APK)
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   build:
-    name: Test and build arm64-v8a debug APK
+    name: Test and build signed Release APKs
     runs-on: ubuntu-24.04
     timeout-minutes: 180
 
@@ -26,10 +26,13 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
 
-      - name: Install required SDK, NDK and CMake
+      - name: Install Android SDK, NDK and CMake
         shell: bash
         run: |
+          set -euo pipefail
           sdkmanager --install \
             'platforms;android-36' \
             'build-tools;36.0.0' \
@@ -43,33 +46,126 @@ jobs:
       - name: Verify native submodules
         shell: bash
         run: |
+          set -euo pipefail
           git submodule status
           test -f third_party/sherpa-onnx/CMakeLists.txt
           test -f third_party/marmalade-ui-android/settings.gradle.kts || \
             test -f third_party/marmalade-ui-android/build.gradle.kts
 
-      - name: Run Android unit tests
+      - name: Configure distribution signing
+        shell: bash
+        env:
+          DIST_KEYSTORE_BASE64: ${{ secrets.MARMALADE_DIST_KEYSTORE_BASE64 }}
+          DIST_STORE_PASSWORD: ${{ secrets.MARMALADE_DIST_STORE_PASSWORD }}
+          DIST_KEY_ALIAS: ${{ secrets.MARMALADE_DIST_KEY_ALIAS }}
+          DIST_KEY_PASSWORD: ${{ secrets.MARMALADE_DIST_KEY_PASSWORD }}
         run: |
+          set -euo pipefail
+          for name in DIST_KEYSTORE_BASE64 DIST_STORE_PASSWORD DIST_KEY_ALIAS DIST_KEY_PASSWORD; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::Missing distribution signing secret: $name"
+              exit 1
+            fi
+          done
+
+          umask 077
+          printf '%s' "$DIST_KEYSTORE_BASE64" | base64 --decode > dist-release.jks
+          keytool -list -keystore dist-release.jks \
+            -storepass "$DIST_STORE_PASSWORD" -alias "$DIST_KEY_ALIAS" > /dev/null
+
+          # Gradle creates signingConfigs.release when any properties exist,
+          # then uses signingConfigs.dist for the fdroidRelease variant.
+          # Supply both sets, backed by the SAME distribution signing key.
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          def escape(value):
+              return (value.replace('\\', '\\\\').replace('\r', '\\r')
+                           .replace('\n', '\\n').replace('=', '\\=')
+                           .replace(':', '\\:').replace('#', '\\#')
+                           .replace('!', '\\!'))
+
+          props = {
+              'storeFile': '../dist-release.jks',
+              'storePassword': os.environ['DIST_STORE_PASSWORD'],
+              'keyAlias': os.environ['DIST_KEY_ALIAS'],
+              'keyPassword': os.environ['DIST_KEY_PASSWORD'],
+              'distStoreFile': '../dist-release.jks',
+              'distStorePassword': os.environ['DIST_STORE_PASSWORD'],
+              'distKeyAlias': os.environ['DIST_KEY_ALIAS'],
+              'distKeyPassword': os.environ['DIST_KEY_PASSWORD'],
+          }
+          Path('keystore.properties').write_text(
+              ''.join(f'{name}={escape(value)}\n' for name, value in props.items()),
+              encoding='utf-8',
+          )
+          PY
+          chmod 600 keystore.properties
+
+          # SHA-256 of the public signing certificate is not a secret.
+          cert_digest="$(keytool -exportcert -keystore dist-release.jks \
+            -storepass "$DIST_STORE_PASSWORD" -alias "$DIST_KEY_ALIAS" \
+            | sha256sum | cut -d' ' -f1)"
+          echo "EXPECTED_SIGNER_SHA256=$cert_digest" >> "$GITHUB_ENV"
+
+      - name: Run unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
           chmod +x ./gradlew
           ./gradlew --no-daemon \
             -PabiFilters=arm64-v8a -PnativeJobs=2 \
             :app:testFdroidDebugUnitTest
 
-      - name: Build Pixel 8 debug APK
+      - name: Build signed F-Droid Release APKs
+        shell: bash
         run: |
-          ./gradlew --no-daemon \
-            -PabiFilters=arm64-v8a -PnativeJobs=2 \
-            :app:assembleFdroidDebug
+          set -euo pipefail
+          # Official release builds must not use smokeRelease or the ABI override.
+          ./gradlew --no-daemon -PnativeJobs=2 :app:assembleFdroidRelease
 
-      - name: Upload arm64 APK
+      - name: Verify release package, signature and collect APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          mkdir -p release-artifacts
+          for abi in arm64-v8a armeabi-v7a; do
+            matches=(app/build/outputs/apk/fdroid/release/*"$abi"*release.apk)
+            if (( ${#matches[@]} != 1 )); then
+              echo "::error::Expected one $abi Release APK, found ${#matches[@]}"
+              exit 1
+            fi
+            apk="${matches[0]}"
+            "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$apk"
+            "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" \
+              | grep "package: name='app.marmalade.stt'" > /dev/null
+            signer_digest="$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify \
+              --print-certs "$apk" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n1)"
+            if [[ "$signer_digest" != "$EXPECTED_SIGNER_SHA256" ]]; then
+              echo "::error::APK signing certificate does not match the configured distribution key"
+              exit 1
+            fi
+            cp -- "$apk" "release-artifacts/marmalade-sensevoice-${abi}-release.apk"
+          done
+          (cd release-artifacts && sha256sum ./*.apk > SHA256SUMS.txt)
+          ls -lh release-artifacts/
+
+      - name: Remove signing material
+        if: always()
+        shell: bash
+        run: rm -f -- keystore.properties dist-release.jks
+
+      - name: Upload signed Release APKs to Actions Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: marmalade-sensevoice-arm64-debug
-          path: app/build/outputs/apk/fdroid/debug/*arm64-v8a*debug.apk
+          name: marmalade-sensevoice-signed-release
+          path: release-artifacts/
           if-no-files-found: error
           retention-days: 14
 
-      - name: Upload test reports if checks fail
+      - name: Upload unit test reports on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
