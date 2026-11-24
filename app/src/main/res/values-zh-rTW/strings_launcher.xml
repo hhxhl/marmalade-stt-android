@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_hide_launcher_icon">隱藏應用程式圖示</string>
+    <string name="settings_hide_launcher_icon_desc">隱藏啟動器中的應用程式圖示。可透過系統語音輸入或鍵盤設定開啟應用程式並恢復圖示。</string>
+</resources>

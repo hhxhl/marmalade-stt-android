@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_hide_launcher_icon">Skrýt ikonu aplikace</string>
+    <string name="settings_hide_launcher_icon_desc">Skrýt ikonu ve spouštěči. Chcete-li ji obnovit, otevřete aplikaci ze systémového nastavení hlasového vstupu nebo klávesnice.</string>
+</resources>

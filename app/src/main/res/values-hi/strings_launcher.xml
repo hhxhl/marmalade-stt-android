@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_hide_launcher_icon">ऐप आइकन छिपाएँ</string>
+    <string name="settings_hide_launcher_icon_desc">लॉन्चर से आइकन छिपाएँ। इसे वापस लाने के लिए सिस्टम की ध्वनि इनपुट या कीबोर्ड सेटिंग से ऐप खोलें।</string>
+</resources>

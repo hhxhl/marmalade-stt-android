@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_hide_launcher_icon">Ocultar ícone do app</string>
+    <string name="settings_hide_launcher_icon_desc">Oculta o ícone do iniciador. Para restaurá-lo, abra o app pelas configurações de entrada por voz ou do teclado do sistema.</string>
+</resources>

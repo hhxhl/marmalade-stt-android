@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_hide_launcher_icon">隐藏应用图标</string>
+    <string name="settings_hide_launcher_icon_desc">隐藏启动器中的应用图标。可通过系统语音输入或键盘设置打开应用并恢复图标。</string>
+</resources>

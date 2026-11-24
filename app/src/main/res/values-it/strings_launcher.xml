@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_hide_launcher_icon">Nascondi icona dell’app</string>
+    <string name="settings_hide_launcher_icon_desc">Nasconde l’icona dal launcher. Per ripristinarla, apri l’app dalle impostazioni di sistema dell’input vocale o della tastiera.</string>
+</resources>

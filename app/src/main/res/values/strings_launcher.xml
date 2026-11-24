@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_hide_launcher_icon">Hide app icon</string>
+    <string name="settings_hide_launcher_icon_desc">Hide the launcher icon. To restore it, open this app from the system voice input or keyboard settings.</string>
+</resources>

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_hide_launcher_icon">App-Symbol ausblenden</string>
+    <string name="settings_hide_launcher_icon_desc">Blendet das Symbol im Launcher aus. Zum Wiederherstellen die App über die Systemeinstellungen für Spracheingabe oder Tastatur öffnen.</string>
+</resources>

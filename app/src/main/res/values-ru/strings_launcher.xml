@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_hide_launcher_icon">Скрыть значок приложения</string>
+    <string name="settings_hide_launcher_icon_desc">Скрывает значок в меню приложений. Чтобы вернуть его, откройте приложение из системных настроек голосового ввода или клавиатуры.</string>
+</resources>

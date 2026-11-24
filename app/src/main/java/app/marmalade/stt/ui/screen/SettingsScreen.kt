@@ -23,9 +23,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -36,6 +38,7 @@ import app.marmalade.stt.R
 import app.marmalade.stt.data.SpeechPrefs
 import app.marmalade.stt.install.EngineLanguages
 import app.marmalade.stt.speech.OrtTuning
+import app.marmalade.stt.system.LauncherIcon
 import app.marmalade.stt.ui.components.SectionHeader
 import app.marmalade.stt.ui.components.SettingsRow
 import app.marmalade.stt.ui.components.SettingsSwitchRow
@@ -43,6 +46,7 @@ import app.marmalade.stt.ui.components.TopBarTitle
 import app.marmalade.stt.ui.rememberUiLocale
 import app.marmalade.ui.theme.depth
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 // -----------------------------------------------------------------------------
 // Data flow
@@ -130,6 +134,9 @@ fun SettingsScreen(
     val measuring by viewModel.measuring.collectAsStateWithLifecycle()
     val speedMessage by viewModel.speedMessage.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var launcherHidden by remember(context) { mutableStateOf(LauncherIcon.isHidden(context)) }
 
     val saveFailedText = stringResource(R.string.settings_save_failed)
     LaunchedEffect(saveFailed) {
@@ -170,6 +177,20 @@ fun SettingsScreen(
                     appearance = it,
                     onModeChange = viewModel::setThemeMode,
                     onPresetChange = viewModel::setThemePreset,
+                )
+                SettingsSwitchRow(
+                    label = stringResource(R.string.settings_hide_launcher_icon),
+                    supporting = stringResource(R.string.settings_hide_launcher_icon_desc),
+                    checked = launcherHidden,
+                    onCheckedChange = { hidden ->
+                        try {
+                            LauncherIcon.setHidden(context, hidden)
+                            launcherHidden = LauncherIcon.isHidden(context)
+                        } catch (e: RuntimeException) {
+                            android.util.Log.w("SettingsScreen", "Couldn't change the launcher icon", e)
+                            scope.launch { snackbarHostState.showSnackbar(saveFailedText) }
+                        }
+                    },
                 )
                 HorizontalDivider(modifier = Modifier.padding(top = 8.dp), color = line)
             }

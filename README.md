@@ -72,7 +72,11 @@ Marmalade STT needs Android 9 or later.
   it from the F-Droid app and it updates itself. F-Droid's builds are
   checked against ours, so they carry the same signature as the GitHub APKs.
 
-Then open the app: the setup guide below walks you through the rest.
+For this fork, on a fresh install or the first upgrade to the hide-icon version,
+open the app from Android's voice input settings or the gear next to Marmalade
+voice typing in the system keyboard settings (enable the voice keyboard if
+needed). This first UI launch makes the launcher icon available. The setup
+guide below walks you through the rest.
 
 ## Setup
 
@@ -100,7 +104,9 @@ Settings → Setup guide. Every step but the speech model can be skipped.
 
 Settings → Appearance sets **Mode** (System, Light or Dark) and **Color**
 (Marmalade, Midnight, Forest or Berry; Wallpaper on Android 12 and later);
-the voice keyboard and the speak-now popup follow it.
+the voice keyboard and the speak-now popup follow it. **Hide app icon** removes
+the launcher entry without disabling speech recognition or the voice keyboard.
+Open the app through the same system settings gear to show the icon again.
 
 ## Private by design
 

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_hide_launcher_icon">إخفاء أيقونة التطبيق</string>
+    <string name="settings_hide_launcher_icon_desc">أخفِ أيقونة التطبيق من المشغّل. لاستعادتها، افتح التطبيق من إعدادات الإدخال الصوتي أو لوحة المفاتيح في النظام.</string>
+</resources>

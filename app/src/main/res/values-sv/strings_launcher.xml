@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_hide_launcher_icon">Dölj appikonen</string>
+    <string name="settings_hide_launcher_icon_desc">Döljer ikonen i startprogrammet. Öppna appen via systemets inställningar för röstinmatning eller tangentbord för att återställa den.</string>
+</resources>

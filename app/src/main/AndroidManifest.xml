@@ -119,12 +119,20 @@
         <activity
             android:name="app.marmalade.stt.MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.MarmaladeStt">
+            android:theme="@style/Theme.MarmaladeStt" />
+
+        <!-- Launcher entry independent of the settings and speech entry points.
+             Its initial state is set on the first UI launch. -->
+        <activity-alias
+            android:name="app.marmalade.stt.LauncherActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:targetActivity="app.marmalade.stt.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
+        </activity-alias>
 
         <!--
           MainActivity opened on the Settings tab: the gear Android shows next

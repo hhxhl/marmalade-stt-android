@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_hide_launcher_icon">アプリアイコンを非表示</string>
+    <string name="settings_hide_launcher_icon_desc">ランチャーのアイコンを非表示にします。元に戻すには、システムの音声入力またはキーボード設定からアプリを開きます。</string>
+</resources>

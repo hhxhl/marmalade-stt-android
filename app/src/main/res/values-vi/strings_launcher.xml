@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_hide_launcher_icon">Ẩn biểu tượng ứng dụng</string>
+    <string name="settings_hide_launcher_icon_desc">Ẩn biểu tượng khỏi trình khởi chạy. Để hiện lại, mở ứng dụng từ cài đặt nhập liệu bằng giọng nói hoặc bàn phím của hệ thống.</string>
+</resources>

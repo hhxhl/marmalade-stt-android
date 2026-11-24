@@ -2,6 +2,7 @@ package app.marmalade.stt
 
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -20,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.marmalade.stt.data.AppearanceSettings
 import app.marmalade.stt.data.OnboardingSettings
+import app.marmalade.stt.system.LauncherIcon
 import app.marmalade.stt.ui.AppRoot
 import app.marmalade.stt.ui.Routes
 import app.marmalade.stt.ui.theme.MarmaladeSttTheme
@@ -58,6 +60,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        try {
+            LauncherIcon.initialize(this)
+        } catch (e: RuntimeException) {
+            Log.w("MainActivity", "Couldn't initialize the launcher icon", e)
+        }
         enableEdgeToEdge()
         val initialTab = if (intent.component?.className == SETTINGS_ALIAS) Routes.Settings else null
         setContent {
